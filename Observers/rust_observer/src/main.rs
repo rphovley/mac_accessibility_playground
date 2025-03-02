@@ -51,17 +51,7 @@ fn main() {
     }
 
     println!("Press Enter to exit");
-
-    // Wait for user to press Enter
-    let mut input = String::new();
-    std::io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
-
-    // Stop observing when done
-    unsafe {
-        stop_window_observing();
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(1));
     }
-
-    println!("Window observer stopped");
 }

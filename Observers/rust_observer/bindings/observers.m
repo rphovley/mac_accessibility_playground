@@ -306,39 +306,37 @@ static void focusedWindowCallback(AXObserverRef observer,
 
       // Make sure we're on the main thread when setting up the notification
       // observer
-      dispatch_async(dispatch_get_main_queue(), ^{
-        // Remove any existing observer first
-        if (self->_appSwitchObserver) {
+      // Remove any existing observer first
+      if (self->_appSwitchObserver) {
+        [[NSWorkspace sharedWorkspace].notificationCenter
+            removeObserver:self->_appSwitchObserver];
+        self->_appSwitchObserver = nil;
+      }
+
+      // Add the new observer
+      self->_appSwitchObserver =
           [[NSWorkspace sharedWorkspace].notificationCenter
-              removeObserver:self->_appSwitchObserver];
-          self->_appSwitchObserver = nil;
-        }
+              addObserverForName:NSWorkspaceDidActivateApplicationNotification
+                          object:nil
+                           queue:nil // nil means receive on the posting thread
+                      usingBlock:^(NSNotification *notification) {
+                        NSLog(@"App switch notification received on thread: "
+                              @"%@ (isMainThread: %@)",
+                              [NSThread currentThread].name,
+                              [NSThread isMainThread] ? @"YES" : @"NO");
 
-        // Add the new observer
-        self->_appSwitchObserver =
-            [[NSWorkspace sharedWorkspace].notificationCenter
-                addObserverForName:NSWorkspaceDidActivateApplicationNotification
-                            object:nil
-                             queue:[NSOperationQueue mainQueue]
-                        usingBlock:^(NSNotification *notification) {
-                          NSLog(@"App switch notification received on thread: "
-                                @"%@ (isMainThread: %@)",
-                                [NSThread currentThread].name,
-                                [NSThread isMainThread] ? @"YES" : @"NO");
+                        NSRunningApplication *app =
+                            notification.userInfo[NSWorkspaceApplicationKey];
+                        NSLog(@"Focused app changed to: %@ (Bundle ID: %@)",
+                              app.localizedName, app.bundleIdentifier);
 
-                          NSRunningApplication *app =
-                              notification.userInfo[NSWorkspaceApplicationKey];
-                          NSLog(@"Focused app changed to: %@ (Bundle ID: %@)",
-                                app.localizedName, app.bundleIdentifier);
+                        BOOL success =
+                            [weakSelf startObservingApp:app.processIdentifier];
+                        NSLog(@"startObservingApp result: %@",
+                              success ? @"SUCCESS" : @"FAILURE");
+                      }];
 
-                          BOOL success = [weakSelf
-                              startObservingApp:app.processIdentifier];
-                          NSLog(@"startObservingApp result: %@",
-                                success ? @"SUCCESS" : @"FAILURE");
-                        }];
-
-        NSLog(@"App switch observer registered: %@", self->_appSwitchObserver);
-      });
+      NSLog(@"App switch observer registered: %@", self->_appSwitchObserver);
 
       // Run the run loop on this thread to receive notifications
       NSLog(@"Starting run loop on observer thread");
@@ -439,6 +437,15 @@ extern "C" {
 void start_window_observing(WindowChangeCallback callback) {
   @autoreleasepool {
     [[WindowObserver sharedObserver] startObservingWithCallback:callback];
+
+    // Create a dedicated thread for the main run loop
+    // dispatch_async(
+    //     dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    //       @autoreleasepool {
+    //         NSLog(@"Starting main run loop on background thread");
+    //         [[NSRunLoop currentRunLoop] run];
+    //       }
+    //     });
   }
 }
 
