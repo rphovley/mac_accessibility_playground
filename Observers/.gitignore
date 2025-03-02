@@ -1,3 +1,5 @@
 rust_observer/bindings/observers
 
 target
+
+app_switch_detector/app_switch_detector
