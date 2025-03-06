@@ -2,5 +2,7 @@
 play
 browser_controller
 regex
+app_switch_detector
 
 *.txt
+target
