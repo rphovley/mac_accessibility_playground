@@ -42,6 +42,10 @@
 
 // Global variable to store the event monitor
 id eventMonitor = nil;
+// Global variable to track if border is displayed
+BOOL borderDisplayed = NO;
+// Global variable to store the current border window
+BorderWindow *currentBorderWindow = nil;
 
 void run_loop() { [[NSRunLoop currentRunLoop] run]; }
 
@@ -75,12 +79,15 @@ int create_border(double red, double green, double blue, double width,
       [borderWindow drawBorder];
       [borderWindow makeKeyAndOrderFront:nil];
 
+      // Store reference to the current border window
+      currentBorderWindow = borderWindow;
+      borderDisplayed = YES;
+
       dispatch_async(
           dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             [NSApp activateIgnoringOtherApps:YES];
             [NSApp run];
           });
-      run_loop();
 
       return 0; // Success
     } @catch (NSException *exception) {
@@ -94,23 +101,82 @@ int create_border(double red, double green, double blue, double width,
   }
 }
 
-// Function to create a border when Enter key is pressed
-void setup_key_event_monitor() {
-  NSLog(@"Setting up key event monitor for Enter key");
+int remove_border() {
+  @autoreleasepool {
+    @try {
+      NSLog(@"Removing border");
 
-  eventMonitor = [NSEvent
-      addGlobalMonitorForEventsMatchingMask:NSEventMaskKeyDown
-                                    handler:^(NSEvent *event) {
-                                      if ([event keyCode] ==
-                                          36) { // 36 is the key code for
-                                                // Enter/Return
-                                        NSLog(@"Enter key pressed, creating "
-                                              @"border");
-                                        // Create a blue border when Enter is
-                                        // pressed
-                                        create_border(0.0, 0.0, 1.0, 8.0, 0.7);
-                                      }
-                                    }];
+      if (currentBorderWindow != nil) {
+        [currentBorderWindow close];
+        currentBorderWindow = nil;
+        borderDisplayed = NO;
+        NSLog(@"Border removed successfully");
+      } else {
+        NSLog(@"No border to remove");
+      }
+
+      return 0; // Success
+    } @catch (NSException *exception) {
+      NSLog(@"Exception caught while removing border: %@", exception);
+      NSLog(@"Reason: %@", [exception reason]);
+      NSLog(@"Stack trace: %@", [exception callStackSymbols]);
+      return 1; // Error
+    } @finally {
+      NSLog(@"Border removal attempt completed");
+    }
+  }
+}
+
+CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type,
+                         CGEventRef event, void *refcon) {
+  switch (type) {
+  case kCGEventKeyDown: {
+    // Get the key code
+    int64_t keyCode =
+        CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+
+    // if enter is pressed, toggle border
+    if (keyCode == 36) {
+      NSLog(@"Enter key pressed");
+      if (borderDisplayed) {
+        NSLog(@"Border is displayed, removing it");
+        remove_border();
+      } else {
+        NSLog(@"Border is not displayed, creating it");
+        create_border(1.0, 1.0, 0.0, 8.0, 0.7); // Yellow border
+      }
+    }
+
+    NSLog(@"Key pressed: %lld", keyCode);
+    break;
+  }
+  default:
+    break;
+  }
+
+  return event;
+}
+
+void start_monitoring() {
+  // Create event tap for mouse clicks, movements, and key events
+  CGEventMask eventMask =
+      CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
+
+  CFMachPortRef _eventTap = CGEventTapCreate(
+      kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault,
+      eventMask, eventCallback, NULL);
+  if (!_eventTap) {
+    NSLog(@"Failed to create event tap");
+
+    return;
+  }
+  CFRunLoopSourceRef _runLoopSource =
+      CFMachPortCreateRunLoopSource(kCFAllocatorDefault, _eventTap, 0);
+  CFRunLoopAddSource(CFRunLoopGetCurrent(), _runLoopSource,
+                     kCFRunLoopCommonModes);
+  CGEventTapEnable(_eventTap, true);
+
+  // start_run_loop();
 }
 
 int main(int argc, const char *argv[]) {
@@ -121,13 +187,18 @@ int main(int argc, const char *argv[]) {
     [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 
-    // Set up the key event monitor instead of immediately creating a border
-    setup_key_event_monitor();
-    create_border(0.0, 0.0, 1.0, 8.0, 0.7);
+    // Set up the key event monitor before running the loop
+    start_monitoring();
+
+    // Create initial border
+    create_border(1.0, 0.0, 0.0, 8.0,
+                  0.7); // Red border initially to differentiate
 
     NSLog(@"Event monitor set up. Press Enter to create a border. Press Ctrl+C "
           @"to exit.");
-    run_loop();
+
+    // Run the main event loop on the main thread
+    [[NSRunLoop mainRunLoop] run];
   }
   return 0;
 }
