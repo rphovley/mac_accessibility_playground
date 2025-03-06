@@ -4,5 +4,7 @@ browser_controller
 regex
 app_switch_detector
 
+UI/border_test/border_test
+
 *.txt
 target
