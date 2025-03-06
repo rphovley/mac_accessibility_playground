@@ -7,7 +7,6 @@
 @property(nonatomic, assign) void (*callback)(const char *);
 @end
 
-// Global observer instance
 static AppSwitchObserver *globalObserver = nil;
 
 @implementation AppSwitchObserver
@@ -17,14 +16,12 @@ static AppSwitchObserver *globalObserver = nil;
   if (self) {
     self.callback = callback;
 
-    // Register for workspace notifications
     [[[NSWorkspace sharedWorkspace] notificationCenter]
         addObserver:self
            selector:@selector(activeApplicationChanged:)
                name:NSWorkspaceDidActivateApplicationNotification
              object:nil];
 
-    // Log the current active application
     NSRunningApplication *currentApp =
         [[NSWorkspace sharedWorkspace] frontmostApplication];
     if (currentApp) {
@@ -58,23 +55,19 @@ static AppSwitchObserver *globalObserver = nil;
 void *init_app_switch_detector(void (*callback)(const char *)) {
   @autoreleasepool {
     globalObserver = [[AppSwitchObserver alloc] initWithCallback:callback];
-    return (__bridge_retained void *)globalObserver;
   }
 }
 
-// Process events for a short time
 void process_events() {
   @autoreleasepool {
     NSLog(@"Processing events");
 
-    // Get the current run loop
     NSRunLoop *currentRunLoop = [NSRunLoop currentRunLoop];
 
     // Add a port to keep the run loop alive (needed for background threads)
     NSPort *port = [NSPort port];
     [currentRunLoop addPort:port forMode:NSDefaultRunLoopMode];
 
-    // Run for a short time
     [currentRunLoop run];
 
     NSLog(@"Finished processing events");
@@ -82,12 +75,9 @@ void process_events() {
 }
 
 // Clean up resources
-void cleanup_app_switch_detector(void *observer) {
+void cleanup_app_switch_detector() {
   @autoreleasepool {
-    if (observer) {
-      AppSwitchObserver *obj = (__bridge_transfer AppSwitchObserver *)observer;
-      obj = nil;
-    }
+    globalObserver = nil;
   }
 }
 
@@ -102,18 +92,16 @@ int main(int argc, const char *argv[]) {
     NSLog(@"Starting app switch detector test...");
 
     // Initialize the detector with our test callback
-    void *observer = init_app_switch_detector(test_callback);
+    init_app_switch_detector(test_callback);
 
     // Run the event loop for a while
     NSLog(@"Running event loop. Switch between applications to see output.");
     NSLog(@"Press Ctrl+C to exit.");
 
-    while (1) {
-      process_events();
-    }
+    process_events();
 
     // This won't be reached due to the infinite loop above
-    cleanup_app_switch_detector(observer);
+    cleanup_app_switch_detector();
   }
   return 0;
 }
