@@ -11,43 +11,18 @@ extern "C" {
     ) -> c_int;
 
     fn remove_border() -> c_int;
+    fn start_monitoring() -> c_int;
+    fn run_loop() -> c_int;
 }
 
 fn main() {
     // Your main application logic here
     println!("Starting main application...");
 
-    // Create a yellow border
     unsafe {
-        let result = create_border(1.0, 1.0, 0.0, 20.0, 0.3);
-        println!("Yellow border created with result: {}", result);
+        start_monitoring();
+        run_loop();
     }
-
-    // Simulate some application work
-    std::thread::sleep(std::time::Duration::from_secs(2));
-
-    // Change to a cyan border
-    unsafe {
-        let result = create_border(0.0, 1.0, 1.0, 20.0, 0.3);
-        println!("Cyan border created with result: {}", result);
-    }
-
-    std::thread::sleep(std::time::Duration::from_secs(2));
-
-    // Remove the border
-    unsafe {
-        let result = remove_border();
-        println!("Border removed with result: {}", result);
-    }
-
-    std::thread::sleep(std::time::Duration::from_secs(2));
-
-    // Create a green border
-    unsafe {
-        let result = create_border(0.0, 1.0, 0.0, 20.0, 0.3);
-        println!("Green border created with result: {}", result);
-    }
-
     // Keep the program running to maintain the border
     println!("Press Ctrl+C to exit");
     loop {

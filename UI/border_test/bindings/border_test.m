@@ -183,19 +183,23 @@ int main(int argc, const char *argv[]) {
   @autoreleasepool {
     NSLog(@"Starting border test...");
 
+    // Initialize global variables
+    borderDisplayed = NO;
+    currentBorderWindow = nil;
+
     // Set up the application
-    [NSApplication sharedApplication];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    // [NSApplication sharedApplication];
+    // [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 
     // Set up the key event monitor before running the loop
     start_monitoring();
 
     // Create initial border
-    create_border(1.0, 0.0, 0.0, 8.0,
-                  0.7); // Red border initially to differentiate
+    create_border(1.0, 0.0, 0.0, 8.0, 0.7); // Red border initially
 
-    NSLog(@"Event monitor set up. Press Enter to create a border. Press Ctrl+C "
-          @"to exit.");
+    NSLog(
+        @"Event monitor set up. Press Enter to toggle the border. Press Ctrl+C "
+        @"to exit.");
 
     // Run the main event loop on the main thread
     [[NSRunLoop mainRunLoop] run];
